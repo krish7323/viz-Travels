@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
-const PACKAGES_URL = import.meta.env.VITE_PACKAGES_API_URL || 'http://localhost:5001/api';
+const PACKAGES_URL = import.meta.env.VITE_API_URL ? `${import.meta.env.VITE_API_URL}/api` : 'http://localhost:5000/api';
 
 // Auth API
 export const authAPI = {
