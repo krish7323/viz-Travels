@@ -25,8 +25,12 @@ app.use(cors({
     'http://localhost:5175',
     'https://viztravel.in',
     'https://www.viztravel.in',
-    'https://tour-website-chi-ashen.vercel.app'
-  ],
+    'https://tour-website-chi-ashen.vercel.app',
+    // Render.com deployed URLs (update these after deployment)
+    process.env.FRONTEND_URL,
+    process.env.VENDOR_URL,
+    process.env.ADMIN_URL,
+  ].filter(Boolean),
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
   credentials: true
 }));

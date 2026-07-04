@@ -3,11 +3,12 @@
   "version": "1.0.0",
   "description": "Root package manager for Tour Website",
   "scripts": {
-    "start": "concurrently --kill-others \"npm run backend\" \"npm run frontend\" \"npm run vendor\" \"npm run admin\"",
+    "start": "concurrently --kill-others \"npm run backend\" \"npm run frontend\" \"npm run vendor\" \"npm run admin\" \"npm run packages\"",
     "backend": "cd backend && npm run dev",
     "frontend": "cd frontend && npm run dev",
     "vendor": "cd Home && npm run dev",
-    "admin": "cd admin-panel/server && npm start"
+    "admin": "cd admin-panel/server && npm start",
+    "packages": "cd server && npm run dev"
   },
   "dependencies": {
     "concurrently": "^8.2.2"
