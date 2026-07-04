@@ -9,7 +9,7 @@ function Dashboard() {
     const user = JSON.parse(sessionStorage.getItem("viz_currentUser"));
     if (user) {
       // Pass the user's email to the backend to filter the count
-      const apiUrl = import.meta.env.VITE_API_URL || "http://localhost:5001/api";
+      const apiUrl = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
       fetch(`${apiUrl}/packages/count?email=${user.email}`)
         .then((res) => res.json())
         .then((data) => setTotalPackages(data.count))

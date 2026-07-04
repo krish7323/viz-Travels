@@ -19,7 +19,7 @@ function MyPackages() {
     if (userString) {
       const user = JSON.parse(userString);
       try {
-        const apiUrl = import.meta.env.VITE_API_URL || "http://localhost:5001/api";
+        const apiUrl = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
         const res = await fetch(`${apiUrl}/packages/my-packages?email=${user.email}`);
         const data = await res.json();
         if (res.ok) setPackages(data);
@@ -31,7 +31,7 @@ function MyPackages() {
 
   const handleDelete = async (id) => {
     if (window.confirm("Are you sure you want to delete this listing?")) {
-      const apiUrl = import.meta.env.VITE_API_URL || "http://localhost:5001/api";
+      const apiUrl = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
       await fetch(`${apiUrl}/packages/${id}`, { method: "DELETE" });
       setPackages(packages.filter((pkg) => pkg._id !== id));
     }
@@ -43,7 +43,7 @@ function MyPackages() {
   };
 
   const handleUpdate = async () => {
-    const apiUrl = import.meta.env.VITE_API_URL || "http://localhost:5001/api";
+    const apiUrl = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
     const res = await fetch(`${apiUrl}/packages/${editingId}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
