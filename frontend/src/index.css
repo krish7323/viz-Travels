@@ -1,0 +1,41 @@
+@import "tailwindcss";
+
+/* RESET */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+/* FULL SCREEN */
+html, body, #root {
+  height: 100%;
+  width: 100%;
+}
+
+/* 🔥 MAIN BACKGROUND */
+body {
+  font-family: 'Poppins', sans-serif;
+
+  /* gradient background (premium feel) */
+  background: linear-gradient(
+    135deg,
+    #0f172a 0%,
+    #020617 100%
+  );
+
+  color: white;
+}
+
+body::before {
+  content: "";
+  position: fixed;
+  top: -200px;
+  right: -200px;
+  width: 500px;
+  height: 500px;
+  background: #38bdf8;
+  opacity: 0.15;
+  filter: blur(120px);
+  z-index: -1;
+}

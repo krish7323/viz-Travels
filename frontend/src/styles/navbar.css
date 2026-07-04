@@ -1,0 +1,363 @@
+/* RESET */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+/* BODY */
+body {
+  font-family: sans-serif;
+  padding-top: 70px; 
+}
+
+/* WRAPPER */
+.fl-nav-wrapper {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  z-index: 1000;
+}
+
+/* NAVBAR */
+.fl-navbar {
+  position: relative; /* needed so fl-menu-panel can anchor to it */
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+
+  padding: 12px 80px;
+
+  background: rgba(255, 255, 255, 0.95);
+  color: #111;
+
+  backdrop-filter: blur(10px);
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+
+  transition: 0.3s;
+}
+
+/* LOGO */
+.fl-logo-icon {
+  font-size: 20px;
+  font-weight: 600;
+  text-decoration: none;
+  color: inherit;
+}
+
+/* ---------- RIGHT SIDE CLUSTER (notification + avatar + hamburger) ---------- */
+.fl-nav-right {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  position: relative;
+}
+
+/* ---------- NAV LINKS (now live inside the dropdown panel) ---------- */
+.fl-nav-links {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+.fl-nav-links a {
+  text-decoration: none;
+  color: inherit;
+  position: relative;
+  width: fit-content;
+}
+
+.fl-nav-links a.active {
+  color: #007bff;
+  font-weight: bold;
+}
+
+.fl-nav-links a::after {
+  content: "";
+  position: absolute;
+  width: 0%;
+  height: 2px;
+  bottom: -4px;
+  left: 0;
+  background: #38bdf8;
+  transition: 0.3s;
+}
+
+.fl-nav-links a:hover::after {
+  width: 100%;
+}
+
+.fl-review-link {
+  color: #00b4d8 !important;
+  font-weight: 600 !important;
+  border: 1px solid #00b4d8;
+  padding: 6px 14px;
+  border-radius: 20px;
+  width: fit-content;
+  margin-top: 4px;
+}
+
+/* ---------- SOCIAL ICONS ---------- */
+.fl-social-icons {
+  display: flex;
+  gap: 15px;
+  margin: 18px 0;
+}
+
+.fl-social-icons a {
+  font-size: 18px;
+  color: inherit;
+  transition: 0.3s;
+}
+
+.fl-social-icons a:hover {
+  color: #ff6600;
+  transform: scale(1.2);
+}
+
+/* ---------- HAMBURGER (always visible now — it's the only way to reach links) ---------- */
+.fl-menu-toggle {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  width: 26px;
+  height: 18px;
+  cursor: pointer;
+}
+
+.fl-menu-toggle span {
+  height: 3px;
+  border-radius: 3px;
+  background: currentColor;
+  transition: transform 0.25s ease, opacity 0.25s ease;
+}
+
+.fl-menu-toggle.active span:nth-child(1) {
+  transform: translateY(7.5px) rotate(45deg);
+}
+.fl-menu-toggle.active span:nth-child(2) {
+  opacity: 0;
+}
+.fl-menu-toggle.active span:nth-child(3) {
+  transform: translateY(-7.5px) rotate(-45deg);
+}
+
+/* ---------- SLIDE-DOWN MENU PANEL ---------- */
+.fl-menu-panel {
+  position: absolute;
+  top: calc(100% + 10px);
+  right: 0;
+  width: 280px;
+  background: #fff;
+  color: #111;
+  border-radius: 14px;
+  box-shadow: 0 16px 32px rgba(0, 0, 0, 0.18);
+  padding: 0 20px;
+  max-height: 0;
+  overflow: hidden;
+  opacity: 0;
+  pointer-events: none;
+  transition: max-height 0.3s ease, opacity 0.25s ease, padding 0.3s ease;
+  z-index: 40;
+}
+
+.fl-menu-panel.open {
+  max-height: 520px;
+  opacity: 1;
+  padding: 20px;
+  pointer-events: all;
+}
+
+/* ---------- PROFILE / AVATAR ---------- */
+.fl-profile {
+  position: relative;
+}
+
+.fl-avatar-btn {
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+}
+
+.fl-avatar-circle {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #00b4d8, #0077b6);
+  color: #fff;
+  font-weight: 700;
+  font-size: 15px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 6px rgba(0, 119, 182, 0.35);
+  transition: transform 0.2s ease;
+}
+
+.fl-avatar-btn:hover .fl-avatar-circle {
+  transform: scale(1.06);
+}
+
+.fl-avatar-guest {
+  background: linear-gradient(135deg, #b0b0b0, #7c7c7c);
+}
+
+.fl-avatar-lg {
+  width: 46px;
+  height: 46px;
+  font-size: 18px;
+}
+
+.fl-profile-dropdown {
+  position: absolute;
+  top: 50px;
+  right: 0;
+  width: 240px;
+  background: #fff;
+  color: #111;
+  border-radius: 14px;
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.15);
+  padding: 16px;
+  z-index: 50;
+  animation: fl-fade-in 0.15s ease-out;
+}
+
+.fl-profile-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding-bottom: 12px;
+  margin-bottom: 12px;
+  border-bottom: 1px solid #eee;
+}
+
+.fl-profile-info {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.fl-profile-name {
+  font-weight: 600;
+  font-size: 14px;
+  color: #222;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.fl-profile-email {
+  font-size: 12px;
+  color: #888;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.fl-logout-btn {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background: #ef4444;
+  color: #fff;
+  border: none;
+  border-radius: 10px;
+  padding: 10px 14px;
+  font-weight: 600;
+  font-size: 14px;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.fl-logout-btn:hover {
+  background: #dc2626;
+}
+
+.fl-login-link {
+  display: block;
+  text-align: center;
+  background: #3b82f6;
+  color: #fff;
+  border-radius: 10px;
+  padding: 10px 14px;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+/* ---------- DOWNLOAD BADGE ---------- */
+.fl-download-badge {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: linear-gradient(135deg, #111, #333);
+  color: #fff;
+  border-radius: 14px;
+  padding: 10px 16px;
+  text-decoration: none;
+  width: fit-content;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.2);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.fl-download-badge:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 22px rgba(0, 0, 0, 0.28);
+}
+
+.fl-download-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.15);
+  font-size: 13px;
+  flex-shrink: 0;
+}
+
+.fl-download-text {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.15;
+}
+
+.fl-download-text small {
+  font-size: 10px;
+  color: #ccc;
+}
+
+.fl-download-text strong {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+@keyframes fl-fade-in {
+  from { opacity: 0; transform: translateY(-6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* ================= MOBILE ================= */
+@media (max-width: 768px) {
+  .fl-navbar {
+    padding: 12px 20px;
+  }
+
+  .fl-menu-panel {
+    width: calc(100vw - 40px);
+    right: 0;
+  }
+}
+
+/* TABLET */
+@media (max-width: 1024px) {
+  .fl-navbar {
+    padding: 12px 40px;
+  }
+}

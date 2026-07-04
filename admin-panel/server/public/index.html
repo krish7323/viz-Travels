@@ -1,0 +1,2634 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>TourTravels Admin Panel</title>
+    <link
+      rel="icon"
+      href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🛡️</text></svg>"
+    />
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            colors: {
+              brand: {
+                50: "#eef2ff",
+                100: "#e0e7ff",
+                500: "#6366f1",
+                600: "#4f46e5",
+                700: "#4338ca",
+                900: "#312e81",
+              },
+            },
+          },
+        },
+      };
+    </script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/bcryptjs/2.4.3/bcrypt.min.js"></script>
+    <script
+      src="https://unpkg.com/react@18/umd/react.production.min.js"
+      crossorigin
+    ></script>
+    <script
+      src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"
+      crossorigin
+    ></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <style>
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        font-family: "Inter", system-ui, sans-serif;
+        background: #0f172a;
+      }
+      .scrollbar-thin::-webkit-scrollbar {
+        width: 4px;
+        height: 4px;
+      }
+      .scrollbar-thin::-webkit-scrollbar-track {
+        background: #1e293b;
+      }
+      .scrollbar-thin::-webkit-scrollbar-thumb {
+        background: #475569;
+        border-radius: 2px;
+      }
+      .json-key {
+        color: #93c5fd;
+      }
+      .json-string {
+        color: #86efac;
+      }
+      .json-number {
+        color: #fbbf24;
+      }
+      .json-bool {
+        color: #f472b6;
+      }
+      .json-null {
+        color: #94a3b8;
+      }
+      @keyframes spin {
+        to {
+          transform: rotate(360deg);
+        }
+      }
+      .spin {
+        animation: spin 1s linear infinite;
+      }
+      @keyframes fadeIn {
+        from {
+          opacity: 0;
+          transform: translateY(8px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+      .fade-in {
+        animation: fadeIn 0.2s ease-out;
+      }
+      pre {
+        margin: 0;
+        white-space: pre-wrap;
+        word-break: break-word;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="text/babel">
+      const { useState, useEffect, useCallback } = React;
+
+      // ── API ───────────────────────────────────────────────────────────────────────
+      const getToken = () => localStorage.getItem("admin_token");
+      const setToken = (t) => localStorage.setItem("admin_token", t);
+      const clearToken = () => localStorage.removeItem("admin_token");
+
+      async function api(method, url, body) {
+        const headers = { "Content-Type": "application/json" };
+        const token = getToken();
+        if (token) headers["Authorization"] = `Bearer ${token}`;
+        const res = await fetch("/api" + url, {
+          method,
+          headers,
+          body: body ? JSON.stringify(body) : undefined,
+        });
+        if (res.status === 401) {
+          clearToken();
+          window.location.reload();
+        }
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || "Request failed");
+        return data;
+      }
+
+      // ── Bcrypt ────────────────────────────────────────────────────────────────────
+      const hashPassword = (plain) =>
+        new Promise((resolve, reject) => {
+          dcodeIO.bcrypt.hash(plain, 10, (err, hash) =>
+            err ? reject(err) : resolve(hash),
+          );
+        });
+
+      // ── Icons ─────────────────────────────────────────────────────────────────────
+      const Icon = ({ name, size = 16, className = "" }) => {
+        const icons = {
+          logout: (
+            <>
+              <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+              <polyline points="16 17 21 12 16 7" />
+              <line x1="21" y1="12" x2="9" y2="12" />
+            </>
+          ),
+          database: (
+            <>
+              <ellipse cx="12" cy="5" rx="9" ry="3" />
+              <path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3" />
+              <path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5" />
+            </>
+          ),
+          table: (
+            <>
+              <rect x="3" y="3" width="18" height="18" rx="2" />
+              <path d="M3 9h18M3 15h18M9 3v18" />
+            </>
+          ),
+          edit: (
+            <>
+              <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+              <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+            </>
+          ),
+          trash: (
+            <>
+              <polyline points="3 6 5 6 21 6" />
+              <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+            </>
+          ),
+          plus: (
+            <>
+              <line x1="12" y1="5" x2="12" y2="19" />
+              <line x1="5" y1="12" x2="19" y2="12" />
+            </>
+          ),
+          search: (
+            <>
+              <circle cx="11" cy="11" r="8" />
+              <line x1="21" y1="21" x2="16.65" y2="16.65" />
+            </>
+          ),
+          chevronLeft: <polyline points="15 18 9 12 15 6" />,
+          chevronRight: <polyline points="9 18 15 12 9 6" />,
+          x: (
+            <>
+              <line x1="18" y1="6" x2="6" y2="18" />
+              <line x1="6" y1="6" x2="18" y2="18" />
+            </>
+          ),
+          eye: (
+            <>
+              <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+              <circle cx="12" cy="12" r="3" />
+            </>
+          ),
+          refresh: (
+            <>
+              <polyline points="23 4 23 10 17 10" />
+              <path d="M20.49 15a9 9 0 1 1-.41-4.43" />
+            </>
+          ),
+          copy: (
+            <>
+              <rect x="9" y="9" width="13" height="13" rx="2" />
+              <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+            </>
+          ),
+          shield: <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />,
+          info: (
+            <>
+              <circle cx="12" cy="12" r="10" />
+              <line x1="12" y1="16" x2="12" y2="12" />
+              <line x1="12" y1="8" x2="12.01" y2="8" />
+            </>
+          ),
+          save: (
+            <>
+              <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" />
+              <polyline points="17 21 17 13 7 13 7 21" />
+              <polyline points="7 3 7 8 15 8" />
+            </>
+          ),
+          image: (
+            <>
+              <rect x="3" y="3" width="18" height="18" rx="2" />
+              <circle cx="8.5" cy="8.5" r="1.5" />
+              <polyline points="21 15 16 10 5 21" />
+            </>
+          ),
+          chart: (
+            <>
+              <line x1="12" y1="20" x2="12" y2="10" />
+              <line x1="18" y1="20" x2="18" y2="4" />
+              <line x1="6" y1="20" x2="6" y2="16" />
+            </>
+          ),
+        };
+        return (
+          <svg
+            width={size}
+            height={size}
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            className={className}
+          >
+            {icons[name]}
+          </svg>
+        );
+      };
+
+      // ── Toast ─────────────────────────────────────────────────────────────────────
+      function Toast({ toasts, removeToast }) {
+        return (
+          <div className="fixed top-4 right-4 z-50 flex flex-col gap-2">
+            {toasts.map((t) => (
+              <div
+                key={t.id}
+                className={`fade-in flex items-center gap-3 px-4 py-3 rounded-lg shadow-xl text-sm font-medium border ${
+                  t.type === "success"
+                    ? "bg-emerald-900/90 border-emerald-700 text-emerald-100"
+                    : t.type === "error"
+                      ? "bg-red-900/90 border-red-700 text-red-100"
+                      : "bg-slate-800 border-slate-600 text-slate-100"
+                }`}
+              >
+                <span>{t.msg}</span>
+                <button
+                  onClick={() => removeToast(t.id)}
+                  className="ml-2 opacity-60 hover:opacity-100"
+                >
+                  <Icon name="x" size={14} />
+                </button>
+              </div>
+            ))}
+          </div>
+        );
+      }
+
+      function useToast() {
+        const [toasts, setToasts] = useState([]);
+        const add = (msg, type = "info") => {
+          const id = Date.now();
+          setToasts((t) => [...t, { id, msg, type }]);
+          setTimeout(
+            () => setToasts((t) => t.filter((x) => x.id !== id)),
+            3500,
+          );
+        };
+        return {
+          toasts,
+          toast: add,
+          removeToast: (id) => setToasts((t) => t.filter((x) => x.id !== id)),
+        };
+      }
+
+      // ── Spinner ───────────────────────────────────────────────────────────────────
+      const Spinner = ({ size = 20 }) => (
+        <svg
+          width={size}
+          height={size}
+          viewBox="0 0 24 24"
+          fill="none"
+          className="spin"
+          stroke="currentColor"
+          strokeWidth="2"
+        >
+          <path
+            d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"
+            strokeOpacity="0.4"
+          />
+          <path d="M12 2v4" />
+        </svg>
+      );
+
+      // ── JSON highlighter ──────────────────────────────────────────────────────────
+      function syntaxHighlight(json) {
+        const str =
+          typeof json === "string" ? json : JSON.stringify(json, null, 2);
+        return str
+          .replace(/&/g, "&amp;")
+          .replace(/</g, "&lt;")
+          .replace(/>/g, "&gt;")
+          .replace(
+            /("(\\u[a-zA-Z0-9]{4}|\\[^u]|[^\\"])*"(\s*:)?|\b(true|false|null)\b|-?\d+(?:\.\d*)?(?:[eE][+\-]?\d+)?)/g,
+            (m) => {
+              if (/^"/.test(m))
+                return /:$/.test(m)
+                  ? `<span class="json-key">${m}</span>`
+                  : `<span class="json-string">${m}</span>`;
+              if (/true|false/.test(m))
+                return `<span class="json-bool">${m}</span>`;
+              if (/null/.test(m)) return `<span class="json-null">${m}</span>`;
+              return `<span class="json-number">${m}</span>`;
+            },
+          );
+      }
+
+      // ── Friendly collection metadata ─────────────────────────────────────────────
+      // Maps raw Mongo collection names to plain-English labels + icons so admins
+      // never have to think in database terms.
+      const COLLECTION_META = {
+        travel_users: { label: "Customers", icon: "👤", width: "max-w-md" },
+        vendors: { label: "Vendors", icon: "🏢", width: "max-w-md" },
+        travel_bookings: { label: "Bookings", icon: "📋", width: "max-w-2xl" },
+        packages: { label: "Tour Packages", icon: "🗺️", width: "max-w-3xl" },
+      };
+      function collectionMeta(name) {
+        return (
+          COLLECTION_META[name] || {
+            label: (name || "")
+              .replace(/[_-]/g, " ")
+              .replace(/\b\w/g, (c) => c.toUpperCase()),
+            icon: "📁",
+            width: "max-w-2xl",
+          }
+        );
+      }
+      function prettifyKey(key) {
+        return key
+          .replace(/_/g, " ")
+          .replace(/([a-z])([A-Z])/g, "$1 $2")
+          .replace(/\b\w/g, (c) => c.toUpperCase());
+      }
+      const fmtCurrency = (n) => "₹" + Number(n || 0).toLocaleString("en-IN");
+
+      // ── Shared form atoms ─────────────────────────────────────────────────────────
+      const iCls =
+        "w-full bg-slate-800 border border-slate-600 rounded-lg px-3 py-2 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition";
+      const sCls =
+        "w-full bg-slate-800 border border-slate-600 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-indigo-500 transition";
+
+      function Field({ label, hint, children }) {
+        return (
+          <div>
+            <label className="block text-xs font-medium text-slate-400 mb-1.5">
+              {label}
+              {hint && (
+                <span className="ml-1 text-slate-600 font-normal">{hint}</span>
+              )}
+            </label>
+            {children}
+          </div>
+        );
+      }
+
+      function ErrBox({ msg }) {
+        if (!msg) return null;
+        return (
+          <div className="text-red-400 text-sm bg-red-900/30 border border-red-800 rounded-lg px-3 py-2 flex items-start gap-2">
+            <Icon name="info" size={14} className="mt-0.5 flex-shrink-0" />
+            {msg}
+          </div>
+        );
+      }
+
+      function FormFooter({ onClose, onSave, saving }) {
+        return (
+          <div className="flex gap-3 px-6 py-4 border-t border-slate-700 flex-shrink-0">
+            <button
+              onClick={onClose}
+              className="flex-1 bg-slate-700 hover:bg-slate-600 text-white py-2.5 rounded-lg text-sm transition"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={onSave}
+              disabled={saving}
+              className="flex-1 bg-indigo-600 hover:bg-indigo-500 disabled:bg-indigo-800 text-white py-2.5 rounded-lg text-sm font-medium transition flex items-center justify-center gap-2"
+            >
+              {saving ? (
+                <>
+                  <Spinner size={16} /> Saving...
+                </>
+              ) : (
+                <>
+                  <Icon name="save" size={15} /> Save
+                </>
+              )}
+            </button>
+          </div>
+        );
+      }
+
+      function SectionTitle({ children, color = "indigo" }) {
+        const c = color === "slate" ? "text-slate-400" : "text-indigo-400";
+        return (
+          <p
+            className={`text-xs font-semibold uppercase tracking-wider mb-3 ${c}`}
+          >
+            {children}
+          </p>
+        );
+      }
+
+      // ── Package option row (outside PackageForm to avoid re-mount issues) ─────────
+      function OptRow({
+        opt,
+        priceField = "price",
+        onTitle,
+        onPrice,
+        onRemove,
+      }) {
+        return (
+          <div className="flex gap-2 items-center">
+            <input
+              className={iCls}
+              placeholder="Option name"
+              value={opt.title}
+              onChange={(e) => onTitle(e.target.value)}
+            />
+            <div className="relative flex-shrink-0 w-28">
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-xs">
+                ₹
+              </span>
+              <input
+                className="w-full bg-slate-800 border border-slate-600 rounded-lg pl-6 pr-2 py-2 text-sm text-white focus:outline-none focus:border-indigo-500"
+                type="number"
+                min="0"
+                value={opt[priceField] || 0}
+                onChange={(e) => onPrice(+e.target.value)}
+              />
+            </div>
+            <button
+              onClick={onRemove}
+              className="w-8 h-8 flex items-center justify-center text-slate-500 hover:text-red-400 hover:bg-slate-700 rounded-lg flex-shrink-0 text-xl leading-none transition"
+            >
+              ×
+            </button>
+          </div>
+        );
+      }
+
+      // ── USER FORM ─────────────────────────────────────────────────────────────────
+      function UserForm({
+        doc,
+        dbName,
+        collection,
+        onClose,
+        onSaved,
+        toast,
+        mode,
+      }) {
+        const [form, setForm] = useState({
+          name: doc.name || "",
+          email: doc.email || "",
+          password: "",
+        });
+        const [saving, setSaving] = useState(false);
+        const [err, setErr] = useState("");
+        const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
+
+        const handleSave = async () => {
+          if (!form.name.trim()) {
+            setErr("Name is required");
+            return;
+          }
+          if (!form.email.trim()) {
+            setErr("Email is required");
+            return;
+          }
+          if (mode === "create" && !form.password) {
+            setErr("Password is required for new users");
+            return;
+          }
+          setSaving(true);
+          setErr("");
+          try {
+            const payload = {
+              name: form.name.trim(),
+              email: form.email.trim(),
+            };
+            if (form.password)
+              payload.password = await hashPassword(form.password);
+            if (mode === "create") {
+              await api("POST", `/data/${dbName}/${collection}`, payload);
+              toast("Customer created!", "success");
+            } else {
+              await api(
+                "PUT",
+                `/data/${dbName}/${collection}/${doc._id}`,
+                payload,
+              );
+              toast("Customer updated!", "success");
+            }
+            onSaved();
+          } catch (e) {
+            setErr(e.message);
+          } finally {
+            setSaving(false);
+          }
+        };
+
+        return (
+          <>
+            <div className="flex-1 overflow-auto p-6 space-y-4">
+              <ErrBox msg={err} />
+              <Field label="Full Name">
+                <input
+                  className={iCls}
+                  value={form.name}
+                  onChange={(e) => set("name", e.target.value)}
+                  placeholder="Customer full name"
+                />
+              </Field>
+              <Field label="Email Address">
+                <input
+                  className={iCls}
+                  type="email"
+                  value={form.email}
+                  onChange={(e) => set("email", e.target.value)}
+                  placeholder="user@example.com"
+                />
+              </Field>
+              <Field
+                label={mode === "create" ? "Password" : "New Password"}
+                hint={mode !== "create" ? "— leave blank to keep current" : ""}
+              >
+                <input
+                  className={iCls}
+                  type="password"
+                  value={form.password}
+                  onChange={(e) => set("password", e.target.value)}
+                  placeholder={
+                    mode === "create"
+                      ? "Set a strong password"
+                      : "Leave blank to keep unchanged"
+                  }
+                  autoComplete="new-password"
+                />
+              </Field>
+              {mode === "edit" && (doc.createdAt || doc.updatedAt) && (
+                <div className="bg-slate-800/50 rounded-lg p-3 space-y-1">
+                  {doc.createdAt && (
+                    <p className="text-xs text-slate-500">
+                      Created: {new Date(doc.createdAt).toLocaleString()}
+                    </p>
+                  )}
+                  {doc.updatedAt && (
+                    <p className="text-xs text-slate-500">
+                      Updated: {new Date(doc.updatedAt).toLocaleString()}
+                    </p>
+                  )}
+                </div>
+              )}
+            </div>
+            <FormFooter onClose={onClose} onSave={handleSave} saving={saving} />
+          </>
+        );
+      }
+
+      // ── VENDOR FORM ───────────────────────────────────────────────────────────────
+      function VendorForm({
+        doc,
+        dbName,
+        collection,
+        onClose,
+        onSaved,
+        toast,
+        mode,
+      }) {
+        const [form, setForm] = useState({
+          companyName: doc.companyName || "",
+          email: doc.email || "",
+          password: "",
+        });
+        const [saving, setSaving] = useState(false);
+        const [err, setErr] = useState("");
+        const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
+
+        const handleSave = async () => {
+          if (!form.companyName.trim()) {
+            setErr("Company name is required");
+            return;
+          }
+          if (!form.email.trim()) {
+            setErr("Email is required");
+            return;
+          }
+          if (mode === "create" && !form.password) {
+            setErr("Password is required for new vendors");
+            return;
+          }
+          setSaving(true);
+          setErr("");
+          try {
+            const payload = {
+              companyName: form.companyName.trim(),
+              email: form.email.trim(),
+            };
+            if (form.password)
+              payload.password = await hashPassword(form.password);
+            if (mode === "create") {
+              await api("POST", `/data/${dbName}/${collection}`, payload);
+              toast("Vendor created!", "success");
+            } else {
+              await api(
+                "PUT",
+                `/data/${dbName}/${collection}/${doc._id}`,
+                payload,
+              );
+              toast("Vendor updated!", "success");
+            }
+            onSaved();
+          } catch (e) {
+            setErr(e.message);
+          } finally {
+            setSaving(false);
+          }
+        };
+
+        return (
+          <>
+            <div className="flex-1 overflow-auto p-6 space-y-4">
+              <ErrBox msg={err} />
+              <Field label="Company Name">
+                <input
+                  className={iCls}
+                  value={form.companyName}
+                  onChange={(e) => set("companyName", e.target.value)}
+                  placeholder="Company / brand name"
+                />
+              </Field>
+              <Field label="Email Address">
+                <input
+                  className={iCls}
+                  type="email"
+                  value={form.email}
+                  onChange={(e) => set("email", e.target.value)}
+                  placeholder="vendor@company.com"
+                />
+              </Field>
+              <Field
+                label={mode === "create" ? "Password" : "New Password"}
+                hint={mode !== "create" ? "— leave blank to keep current" : ""}
+              >
+                <input
+                  className={iCls}
+                  type="password"
+                  value={form.password}
+                  onChange={(e) => set("password", e.target.value)}
+                  placeholder={
+                    mode === "create"
+                      ? "Set a strong password"
+                      : "Leave blank to keep unchanged"
+                  }
+                  autoComplete="new-password"
+                />
+              </Field>
+              {mode === "create" && (
+                <div className="bg-slate-800/50 rounded-lg p-3 text-xs text-slate-500">
+                  Password will be hashed with bcrypt (10 rounds) before saving.
+                </div>
+              )}
+            </div>
+            <FormFooter onClose={onClose} onSave={handleSave} saving={saving} />
+          </>
+        );
+      }
+
+      // ── BOOKING FORM ──────────────────────────────────────────────────────────────
+      function BookingForm({
+        doc,
+        dbName,
+        collection,
+        onClose,
+        onSaved,
+        toast,
+        mode,
+      }) {
+        const [form, setForm] = useState({
+          fullName: doc.fullName || "",
+          email: doc.email || "",
+          phone: doc.phone || "",
+          tourId: doc.tourId || "",
+          tourName: doc.tourName || "",
+          vendorEmail: doc.vendorEmail || "",
+          basePrice: doc.basePrice ?? 0,
+          totalAmount: doc.totalAmount ?? 0,
+          advanceAmount: doc.advanceAmount ?? 0,
+          razorpayOrderId: doc.razorpayOrderId || "",
+          razorpayPaymentId: doc.razorpayPaymentId || "",
+          paymentStatus: doc.paymentStatus || "pending",
+          advancePaid: !!doc.advancePaid,
+        });
+        const [saving, setSaving] = useState(false);
+        const [err, setErr] = useState("");
+        const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
+        const remaining = form.totalAmount - form.advanceAmount;
+
+        const handleSave = async () => {
+          if (!form.fullName.trim()) {
+            setErr("Full name is required");
+            return;
+          }
+          if (!form.email.trim()) {
+            setErr("Email is required");
+            return;
+          }
+          if (!form.phone.trim()) {
+            setErr("Phone is required");
+            return;
+          }
+          setSaving(true);
+          setErr("");
+          try {
+            const payload = { ...form, remainingAmount: remaining };
+            if (mode === "create") {
+              await api("POST", `/data/${dbName}/${collection}`, payload);
+              toast("Booking created!", "success");
+            } else {
+              await api(
+                "PUT",
+                `/data/${dbName}/${collection}/${doc._id}`,
+                payload,
+              );
+              toast("Booking updated!", "success");
+            }
+            onSaved();
+          } catch (e) {
+            setErr(e.message);
+          } finally {
+            setSaving(false);
+          }
+        };
+
+        return (
+          <>
+            <div className="flex-1 overflow-auto p-6 space-y-6 scrollbar-thin">
+              <ErrBox msg={err} />
+
+              <div>
+                <SectionTitle>Customer Info</SectionTitle>
+                <div className="grid grid-cols-2 gap-3">
+                  <Field label="Full Name">
+                    <input
+                      className={iCls}
+                      value={form.fullName}
+                      onChange={(e) => set("fullName", e.target.value)}
+                      placeholder="Customer full name"
+                    />
+                  </Field>
+                  <Field label="Email">
+                    <input
+                      className={iCls}
+                      type="email"
+                      value={form.email}
+                      onChange={(e) => set("email", e.target.value)}
+                    />
+                  </Field>
+                  <div className="col-span-2">
+                    <Field label="Phone Number">
+                      <input
+                        className={iCls}
+                        value={form.phone}
+                        onChange={(e) => set("phone", e.target.value)}
+                        placeholder="+91 XXXXX XXXXX"
+                      />
+                    </Field>
+                  </div>
+                </div>
+              </div>
+
+              <div className="border-t border-slate-700/50 pt-5">
+                <SectionTitle>Tour Details</SectionTitle>
+                <div className="grid grid-cols-2 gap-3">
+                  <Field label="Tour Name">
+                    <input
+                      className={iCls}
+                      value={form.tourName}
+                      onChange={(e) => set("tourName", e.target.value)}
+                    />
+                  </Field>
+                  <Field label="Tour ID">
+                    <input
+                      className={iCls}
+                      value={form.tourId}
+                      onChange={(e) => set("tourId", e.target.value)}
+                    />
+                  </Field>
+                  <div className="col-span-2">
+                    <Field
+                      label="Vendor Email"
+                      hint="— who this booking belongs to"
+                    >
+                      <input
+                        className={iCls}
+                        type="email"
+                        value={form.vendorEmail}
+                        onChange={(e) => set("vendorEmail", e.target.value)}
+                        placeholder="vendor@company.com"
+                      />
+                    </Field>
+                  </div>
+                </div>
+              </div>
+
+              <div className="border-t border-slate-700/50 pt-5">
+                <SectionTitle>Payment</SectionTitle>
+                <div className="grid grid-cols-2 gap-3">
+                  <Field label="Base Price (₹)">
+                    <input
+                      className={iCls}
+                      type="number"
+                      min="0"
+                      value={form.basePrice}
+                      onChange={(e) => set("basePrice", +e.target.value)}
+                    />
+                  </Field>
+                  <Field label="Total Amount (₹)">
+                    <input
+                      className={iCls}
+                      type="number"
+                      min="0"
+                      value={form.totalAmount}
+                      onChange={(e) => set("totalAmount", +e.target.value)}
+                    />
+                  </Field>
+                  <Field label="Advance Paid (₹)">
+                    <input
+                      className={iCls}
+                      type="number"
+                      min="0"
+                      value={form.advanceAmount}
+                      onChange={(e) => set("advanceAmount", +e.target.value)}
+                    />
+                  </Field>
+                  <Field label="Remaining (₹)" hint="— auto">
+                    <input
+                      className={iCls}
+                      type="number"
+                      value={remaining}
+                      readOnly
+                      style={{ opacity: 0.5, cursor: "default" }}
+                    />
+                  </Field>
+                  <Field label="Payment Status">
+                    <select
+                      className={sCls}
+                      value={form.paymentStatus}
+                      onChange={(e) => set("paymentStatus", e.target.value)}
+                    >
+                      <option value="pending">⏳ Pending</option>
+                      <option value="completed">✅ Completed</option>
+                      <option value="failed">❌ Failed</option>
+                    </select>
+                  </Field>
+                  <Field label="Advance Paid">
+                    <div className="flex items-center gap-3 h-10">
+                      <button
+                        type="button"
+                        onClick={() => set("advancePaid", !form.advancePaid)}
+                        className={`w-12 h-6 rounded-full transition-colors relative flex-shrink-0 ${form.advancePaid ? "bg-emerald-600" : "bg-slate-600"}`}
+                      >
+                        <span
+                          className={`w-5 h-5 bg-white rounded-full absolute top-0.5 shadow-sm transition-all duration-200 ${form.advancePaid ? "left-6" : "left-0.5"}`}
+                        />
+                      </button>
+                      <span
+                        className={`text-sm font-medium ${form.advancePaid ? "text-emerald-400" : "text-slate-400"}`}
+                      >
+                        {form.advancePaid ? "Yes" : "No"}
+                      </span>
+                    </div>
+                  </Field>
+                </div>
+              </div>
+
+              <div className="border-t border-slate-700/50 pt-5">
+                <SectionTitle color="slate">Payment References</SectionTitle>
+                <div className="space-y-3">
+                  <Field label="Razorpay Order ID">
+                    <input
+                      className={iCls}
+                      value={form.razorpayOrderId}
+                      onChange={(e) => set("razorpayOrderId", e.target.value)}
+                    />
+                  </Field>
+                  <Field label="Razorpay Payment ID">
+                    <input
+                      className={iCls}
+                      value={form.razorpayPaymentId}
+                      onChange={(e) => set("razorpayPaymentId", e.target.value)}
+                    />
+                  </Field>
+                </div>
+              </div>
+
+              {mode === "edit" && (doc.createdAt || doc.updatedAt) && (
+                <div className="border-t border-slate-700/50 pt-4 text-xs text-slate-500 space-y-1">
+                  {doc.createdAt && (
+                    <p>Created: {new Date(doc.createdAt).toLocaleString()}</p>
+                  )}
+                  {doc.updatedAt && (
+                    <p>Updated: {new Date(doc.updatedAt).toLocaleString()}</p>
+                  )}
+                </div>
+              )}
+            </div>
+            <FormFooter onClose={onClose} onSave={handleSave} saving={saving} />
+          </>
+        );
+      }
+
+      // ── PACKAGE FORM ──────────────────────────────────────────────────────────────
+      function PackageForm({
+        doc,
+        dbName,
+        collection,
+        onClose,
+        onSaved,
+        toast,
+        mode,
+      }) {
+        const [form, setForm] = useState({
+          title: doc.title || "",
+          vendorEmail: doc.vendorEmail || "",
+          category: doc.category || "Tour",
+          location: doc.location || "",
+          price: doc.price ?? 0,
+          discount: doc.discount ?? 0,
+          description: doc.description || "",
+          tourGuide: doc.tourGuide || "",
+          mood: doc.mood || "",
+          duration: doc.duration || "",
+          roomType: doc.roomType || "",
+          amenities: doc.amenities || "",
+          travelClass: Array.isArray(doc.travelClass) ? doc.travelClass : [],
+          dining: Array.isArray(doc.dining) ? doc.dining : [],
+          transport: Array.isArray(doc.transport) ? doc.transport : [],
+          customOptions: Array.isArray(doc.customOptions)
+            ? doc.customOptions
+            : [],
+          images: Array.isArray(doc.images) ? doc.images : [],
+        });
+        const [saving, setSaving] = useState(false);
+        const [err, setErr] = useState("");
+        const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
+
+        // Standard option arrays (travelClass / dining / transport) — { title, price }
+        const addOpt = (key) =>
+          set(key, [...form[key], { title: "", price: 0 }]);
+        const remOpt = (key, i) =>
+          set(
+            key,
+            form[key].filter((_, j) => j !== i),
+          );
+        const setOptFld = (key, i, field, val) =>
+          set(
+            key,
+            form[key].map((o, j) => (j === i ? { ...o, [field]: val } : o)),
+          );
+
+        // Custom options — { title, extraPrice }
+        const addCustom = () =>
+          set("customOptions", [
+            ...form.customOptions,
+            { title: "", extraPrice: 0 },
+          ]);
+        const remCustom = (i) =>
+          set(
+            "customOptions",
+            form.customOptions.filter((_, j) => j !== i),
+          );
+        const setCustomFld = (i, field, val) =>
+          set(
+            "customOptions",
+            form.customOptions.map((o, j) =>
+              j === i ? { ...o, [field]: val } : o,
+            ),
+          );
+
+        const handleImgUpload = (e) => {
+          Array.from(e.target.files).forEach((file) => {
+            const reader = new FileReader();
+            reader.onload = (ev) =>
+              setForm((f) => ({
+                ...f,
+                images: [...f.images, ev.target.result],
+              }));
+            reader.readAsDataURL(file);
+          });
+        };
+
+        const handleSave = async () => {
+          if (!form.title.trim()) {
+            setErr("Title is required");
+            return;
+          }
+          if (!form.location.trim()) {
+            setErr("Location is required");
+            return;
+          }
+          if (!form.price) {
+            setErr("Price is required");
+            return;
+          }
+          setSaving(true);
+          setErr("");
+          try {
+            if (mode === "create") {
+              await api("POST", `/data/${dbName}/${collection}`, form);
+              toast("Package created!", "success");
+            } else {
+              await api(
+                "PUT",
+                `/data/${dbName}/${collection}/${doc._id}`,
+                form,
+              );
+              toast("Package updated!", "success");
+            }
+            onSaved();
+          } catch (e) {
+            setErr(e.message);
+          } finally {
+            setSaving(false);
+          }
+        };
+
+        const ArraySection = ({ label, arrKey }) => (
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <p className="text-xs text-slate-400 font-medium">{label}</p>
+              <button
+                onClick={() => addOpt(arrKey)}
+                className="text-xs text-indigo-400 hover:text-indigo-300 px-2 py-1 rounded hover:bg-slate-800 transition"
+              >
+                + Add
+              </button>
+            </div>
+            {form[arrKey].length === 0 && (
+              <p className="text-xs text-slate-600 italic py-1">
+                None — click + Add to create one
+              </p>
+            )}
+            <div className="space-y-2">
+              {form[arrKey].map((o, i) => (
+                <OptRow
+                  key={i}
+                  opt={o}
+                  priceField="price"
+                  onTitle={(v) => setOptFld(arrKey, i, "title", v)}
+                  onPrice={(v) => setOptFld(arrKey, i, "price", v)}
+                  onRemove={() => remOpt(arrKey, i)}
+                />
+              ))}
+            </div>
+          </div>
+        );
+
+        return (
+          <>
+            <div className="flex-1 overflow-auto p-6 space-y-6 scrollbar-thin">
+              <ErrBox msg={err} />
+
+              {/* Basic Info */}
+              <div>
+                <SectionTitle>Basic Info</SectionTitle>
+                <div className="grid grid-cols-2 gap-3">
+                  <Field label="Title">
+                    <input
+                      className={iCls}
+                      value={form.title}
+                      onChange={(e) => set("title", e.target.value)}
+                      placeholder="Package title"
+                    />
+                  </Field>
+                  <Field label="Category">
+                    <select
+                      className={sCls}
+                      value={form.category}
+                      onChange={(e) => set("category", e.target.value)}
+                    >
+                      <option value="Tour">🗺️ Tour</option>
+                      <option value="Hotel">🏨 Hotel</option>
+                    </select>
+                  </Field>
+                  <Field label="Location">
+                    <input
+                      className={iCls}
+                      value={form.location}
+                      onChange={(e) => set("location", e.target.value)}
+                      placeholder="City, State"
+                    />
+                  </Field>
+                  <Field label="Vendor Email">
+                    <input
+                      className={iCls}
+                      type="email"
+                      value={form.vendorEmail}
+                      onChange={(e) => set("vendorEmail", e.target.value)}
+                    />
+                  </Field>
+                  <Field label="Price (₹)">
+                    <input
+                      className={iCls}
+                      type="number"
+                      min="0"
+                      value={form.price}
+                      onChange={(e) => set("price", +e.target.value)}
+                    />
+                  </Field>
+                  <Field label="Discount (%)" hint="0–100">
+                    <input
+                      className={iCls}
+                      type="number"
+                      min="0"
+                      max="100"
+                      value={form.discount}
+                      onChange={(e) =>
+                        set(
+                          "discount",
+                          Math.min(100, Math.max(0, +e.target.value)),
+                        )
+                      }
+                    />
+                  </Field>
+                  <div className="col-span-2">
+                    <Field label="Description">
+                      <textarea
+                        className={iCls}
+                        rows={4}
+                        value={form.description}
+                        onChange={(e) => set("description", e.target.value)}
+                        placeholder="Describe this package..."
+                      />
+                    </Field>
+                  </div>
+                </div>
+              </div>
+
+              {/* Tour / Hotel specifics */}
+              {form.category === "Tour" ? (
+                <div className="border-t border-slate-700/50 pt-5">
+                  <div className="p-4 bg-indigo-950/40 rounded-xl border border-indigo-900/40">
+                    <SectionTitle>Tour Details</SectionTitle>
+                    <div className="grid grid-cols-3 gap-3">
+                      <Field label="Tour Guide">
+                        <input
+                          className={iCls}
+                          value={form.tourGuide}
+                          onChange={(e) => set("tourGuide", e.target.value)}
+                          placeholder="Guide name"
+                        />
+                      </Field>
+                      <Field label="Mood / Theme">
+                        <input
+                          className={iCls}
+                          value={form.mood}
+                          onChange={(e) => set("mood", e.target.value)}
+                          placeholder="Adventure, Leisure..."
+                        />
+                      </Field>
+                      <Field label="Duration">
+                        <input
+                          className={iCls}
+                          value={form.duration}
+                          onChange={(e) => set("duration", e.target.value)}
+                          placeholder="3 Days / 2 Nights"
+                        />
+                      </Field>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="border-t border-slate-700/50 pt-5">
+                  <div className="p-4 bg-indigo-950/40 rounded-xl border border-indigo-900/40">
+                    <SectionTitle>Hotel Details</SectionTitle>
+                    <div className="grid grid-cols-2 gap-3">
+                      <Field label="Room Type">
+                        <input
+                          className={iCls}
+                          value={form.roomType}
+                          onChange={(e) => set("roomType", e.target.value)}
+                          placeholder="Deluxe Suite, Standard..."
+                        />
+                      </Field>
+                      <Field label="Amenities">
+                        <input
+                          className={iCls}
+                          value={form.amenities}
+                          onChange={(e) => set("amenities", e.target.value)}
+                          placeholder="WiFi, Pool, AC..."
+                        />
+                      </Field>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Pricing options */}
+              <div className="border-t border-slate-700/50 pt-5 space-y-5">
+                <SectionTitle color="slate">Pricing Options</SectionTitle>
+                <ArraySection
+                  label="Travel Class Options"
+                  arrKey="travelClass"
+                />
+                <ArraySection label="Dining Options" arrKey="dining" />
+                <ArraySection label="Transport Options" arrKey="transport" />
+              </div>
+
+              {/* Custom Add-ons */}
+              <div className="border-t border-slate-700/50 pt-5">
+                <div className="flex items-center justify-between mb-3">
+                  <SectionTitle color="slate">Custom Add-ons</SectionTitle>
+                  <button
+                    onClick={addCustom}
+                    className="text-xs text-indigo-400 hover:text-indigo-300 px-2 py-1 rounded hover:bg-slate-800 transition -mt-3"
+                  >
+                    + Add
+                  </button>
+                </div>
+                {form.customOptions.length === 0 && (
+                  <p className="text-xs text-slate-600 italic py-1">
+                    None — click + Add to create one
+                  </p>
+                )}
+                <div className="space-y-2">
+                  {form.customOptions.map((o, i) => (
+                    <OptRow
+                      key={i}
+                      opt={{ title: o.title, price: o.extraPrice }}
+                      priceField="price"
+                      onTitle={(v) => setCustomFld(i, "title", v)}
+                      onPrice={(v) => setCustomFld(i, "extraPrice", v)}
+                      onRemove={() => remCustom(i)}
+                    />
+                  ))}
+                </div>
+              </div>
+
+              {/* Images */}
+              <div className="border-t border-slate-700/50 pt-5">
+                <div className="flex items-center justify-between mb-3">
+                  <SectionTitle color="slate">
+                    Images ({form.images.length})
+                  </SectionTitle>
+                  <label className="flex items-center gap-1.5 text-xs text-indigo-400 hover:text-indigo-300 cursor-pointer px-2 py-1 rounded hover:bg-slate-800 transition -mt-3 border border-slate-700">
+                    <Icon name="image" size={12} /> Upload
+                    <input
+                      type="file"
+                      accept="image/*"
+                      multiple
+                      className="hidden"
+                      onChange={handleImgUpload}
+                    />
+                  </label>
+                </div>
+                {form.images.length === 0 && (
+                  <p className="text-xs text-slate-600 italic">
+                    No images — click Upload to add
+                  </p>
+                )}
+                {form.images.length > 0 && (
+                  <div className="grid grid-cols-4 gap-2">
+                    {form.images.map((img, i) => (
+                      <div
+                        key={i}
+                        className="relative group rounded-xl overflow-hidden border border-slate-700 bg-slate-800"
+                      >
+                        <img
+                          src={img}
+                          alt=""
+                          className="w-full h-24 object-cover"
+                        />
+                        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/60 transition flex items-center justify-center">
+                          <button
+                            onClick={() =>
+                              set(
+                                "images",
+                                form.images.filter((_, j) => j !== i),
+                              )
+                            }
+                            className="opacity-0 group-hover:opacity-100 w-8 h-8 bg-red-600 hover:bg-red-500 text-white rounded-full flex items-center justify-center text-lg font-bold transition"
+                          >
+                            ×
+                          </button>
+                        </div>
+                        <span className="absolute bottom-1 left-1 bg-black/60 text-white text-xs px-1.5 py-0.5 rounded">
+                          {i + 1}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+            <FormFooter onClose={onClose} onSave={handleSave} saving={saving} />
+          </>
+        );
+      }
+
+      // ── JSON FALLBACK FORM ────────────────────────────────────────────────────────
+      function JsonEditForm({
+        doc,
+        dbName,
+        collection,
+        onClose,
+        onSaved,
+        toast,
+        mode,
+      }) {
+        const [jsonText, setJsonText] = useState(() => {
+          if (mode === "create") return "{\n  \n}";
+          const { _id, ...rest } = doc;
+          return JSON.stringify(rest, null, 2);
+        });
+        const [err, setErr] = useState("");
+        const [saving, setSaving] = useState(false);
+
+        const handleSave = async () => {
+          setSaving(true);
+          setErr("");
+          try {
+            const parsed = JSON.parse(jsonText);
+            if (mode === "create") {
+              await api("POST", `/data/${dbName}/${collection}`, parsed);
+              toast("Document created!", "success");
+            } else {
+              await api(
+                "PUT",
+                `/data/${dbName}/${collection}/${doc._id}`,
+                parsed,
+              );
+              toast("Document updated!", "success");
+            }
+            onSaved();
+          } catch (e) {
+            setErr(
+              e.message.includes("JSON")
+                ? "Invalid JSON — check syntax"
+                : e.message,
+            );
+          } finally {
+            setSaving(false);
+          }
+        };
+
+        return (
+          <>
+            <div className="flex-1 overflow-auto p-4">
+              <ErrBox msg={err} />
+              {err && <div className="mb-3" />}
+              <textarea
+                value={jsonText}
+                onChange={(e) => setJsonText(e.target.value)}
+                className="w-full h-80 bg-slate-950 border border-slate-700 rounded-lg p-4 text-sm font-mono text-slate-200 focus:outline-none focus:border-indigo-500 resize-none scrollbar-thin"
+                spellCheck={false}
+              />
+              <p className="text-xs text-slate-500 mt-2">
+                Edit raw JSON — _id is managed automatically.
+              </p>
+            </div>
+            <FormFooter onClose={onClose} onSave={handleSave} saving={saving} />
+          </>
+        );
+      }
+
+      // ── SMART EDIT MODAL (routes to the right form) ───────────────────────────────
+      const FORM_REGISTRY = {
+        travel_users: UserForm,
+        vendors: VendorForm,
+        travel_bookings: BookingForm,
+        packages: PackageForm,
+      };
+
+      function EditModal({
+        doc,
+        dbName,
+        collection,
+        onClose,
+        onSaved,
+        toast,
+        mode = "edit",
+      }) {
+        const Form = FORM_REGISTRY[collection];
+        const meta = collectionMeta(collection);
+        const singular = meta.label.endsWith("ies")
+          ? meta.label.slice(0, -3) + "y"
+          : meta.label.replace(/s$/, "");
+        const action = mode === "create" ? "➕ New" : "✏️ Edit";
+        const title = Form
+          ? `${action} ${meta.icon} ${singular}`
+          : mode === "create"
+            ? "➕ New Document"
+            : "✏️ Edit Document";
+        const width = meta.width;
+        const props = {
+          doc,
+          dbName,
+          collection,
+          onClose,
+          onSaved,
+          toast,
+          mode,
+        };
+
+        return (
+          <div
+            className="fixed inset-0 z-40 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm"
+            onClick={onClose}
+          >
+            <div
+              className={`bg-slate-900 border border-slate-700 rounded-xl shadow-2xl w-full ${width} max-h-[90vh] flex flex-col fade-in`}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-center justify-between px-6 py-4 border-b border-slate-700 flex-shrink-0">
+                <div>
+                  <h2 className="text-white font-semibold text-lg">{title}</h2>
+                  {mode === "edit" && doc._id && (
+                    <p className="text-xs text-slate-500 font-mono mt-0.5">
+                      ID: {doc._id}
+                    </p>
+                  )}
+                </div>
+                <button
+                  onClick={onClose}
+                  className="text-slate-400 hover:text-white"
+                >
+                  <Icon name="x" size={20} />
+                </button>
+              </div>
+              {Form ? <Form {...props} /> : <JsonEditForm {...props} />}
+            </div>
+          </div>
+        );
+      }
+
+      // ── VIEW MODAL ────────────────────────────────────────────────────────────────
+      function ViewModal({ doc, collection, onClose, onEdit, toast }) {
+        const meta = collection ? collectionMeta(collection) : null;
+        const copyDoc = () => {
+          navigator.clipboard.writeText(JSON.stringify(doc, null, 2));
+          toast("Copied!", "success");
+        };
+        // Replace base64 image data for readability, hide internal DB noise
+        const display = JSON.parse(JSON.stringify(doc));
+        delete display._id;
+        delete display.__v;
+        if (Array.isArray(display.images))
+          display.images = display.images.map((_, i) => `[image ${i + 1}]`);
+
+        return (
+          <div
+            className="fixed inset-0 z-40 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm"
+            onClick={onClose}
+          >
+            <div
+              className="bg-slate-900 border border-slate-700 rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col fade-in"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-center justify-between px-6 py-4 border-b border-slate-700">
+                <div>
+                  <h2 className="text-white font-semibold text-lg">
+                    {meta
+                      ? `${meta.icon} ${meta.label.replace(/s$/, "")} Details`
+                      : "📄 View Document"}
+                  </h2>
+                  {doc._id && (
+                    <p className="text-xs text-slate-600 font-mono mt-0.5">
+                      ID: {doc._id}
+                    </p>
+                  )}
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={copyDoc}
+                    title="Copy JSON"
+                    className="text-slate-400 hover:text-white p-1.5 rounded hover:bg-slate-700 transition"
+                  >
+                    <Icon name="copy" size={16} />
+                  </button>
+                  <button
+                    onClick={onEdit}
+                    className="bg-indigo-600 hover:bg-indigo-500 text-white text-xs px-3 py-1.5 rounded-lg transition flex items-center gap-1"
+                  >
+                    <Icon name="edit" size={13} /> Edit
+                  </button>
+                  <button
+                    onClick={onClose}
+                    className="text-slate-400 hover:text-white"
+                  >
+                    <Icon name="x" size={20} />
+                  </button>
+                </div>
+              </div>
+              <div className="flex-1 overflow-auto p-4">
+                <pre
+                  className="text-sm font-mono text-slate-300 bg-slate-950 rounded-lg p-4 scrollbar-thin"
+                  dangerouslySetInnerHTML={{ __html: syntaxHighlight(display) }}
+                />
+              </div>
+            </div>
+          </div>
+        );
+      }
+
+      // ── CONFIRM DIALOG ────────────────────────────────────────────────────────────
+      function Confirm({ message, onConfirm, onCancel }) {
+        return (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
+            <div className="bg-slate-900 border border-slate-700 rounded-xl p-6 w-full max-w-sm fade-in text-center">
+              <div className="w-12 h-12 bg-red-900/50 rounded-full flex items-center justify-center mx-auto mb-4">
+                <Icon name="trash" size={22} className="text-red-400" />
+              </div>
+              <p className="text-white font-medium mb-1">Confirm Delete</p>
+              <p className="text-slate-400 text-sm mb-6">{message}</p>
+              <div className="flex gap-3">
+                <button
+                  onClick={onCancel}
+                  className="flex-1 bg-slate-700 hover:bg-slate-600 text-white py-2 rounded-lg text-sm transition"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={onConfirm}
+                  className="flex-1 bg-red-600 hover:bg-red-500 text-white py-2 rounded-lg text-sm font-medium transition"
+                >
+                  Delete
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+      }
+
+      // ── COLLECTION TABLE ──────────────────────────────────────────────────────────
+      function CollectionTable({ dbName, collectionName, toast }) {
+        const [docs, setDocs] = useState([]);
+        const [total, setTotal] = useState(0);
+        const [page, setPage] = useState(1);
+        const [totalPages, setTotalPages] = useState(1);
+        const [loading, setLoading] = useState(false);
+        const [search, setSearch] = useState("");
+        const [searchInput, setSearchInput] = useState("");
+        const [selected, setSelected] = useState([]);
+        const [viewDoc, setViewDoc] = useState(null);
+        const [editDoc, setEditDoc] = useState(null);
+        const [createMode, setCreateMode] = useState(false);
+        const [confirm, setConfirm] = useState(null);
+        const [columns, setColumns] = useState([]);
+        const meta = collectionMeta(collectionName);
+
+        const load = useCallback(async () => {
+          setLoading(true);
+          try {
+            const data = await api(
+              "GET",
+              `/data/${dbName}/${collectionName}?page=${page}&limit=20&search=${encodeURIComponent(search)}`,
+            );
+            setDocs(data.documents);
+            setTotal(data.total);
+            setTotalPages(data.totalPages);
+            setSelected([]);
+            const allKeys = new Set();
+            data.documents
+              .slice(0, 5)
+              .forEach((d) => Object.keys(d).forEach((k) => allKeys.add(k)));
+            // Hide internal DB fields (_id, __v) — admins work with the actions
+            // column instead, keeping the table focused on real business data.
+            setColumns(
+              Array.from(allKeys)
+                .filter((k) => k !== "_id" && k !== "__v")
+                .slice(0, 8),
+            );
+          } catch (e) {
+            toast(e.message, "error");
+          } finally {
+            setLoading(false);
+          }
+        }, [dbName, collectionName, page, search]);
+
+        useEffect(() => {
+          load();
+        }, [load]);
+
+        const deleteOne = async (id) => {
+          try {
+            await api("DELETE", `/data/${dbName}/${collectionName}/${id}`);
+            toast("Deleted", "success");
+            load();
+          } catch (e) {
+            toast(e.message, "error");
+          }
+        };
+        const deleteBulk = async () => {
+          try {
+            await api("DELETE", `/data/${dbName}/${collectionName}`, {
+              ids: selected,
+            });
+            toast(`Deleted ${selected.length}`, "success");
+            setSelected([]);
+            load();
+          } catch (e) {
+            toast(e.message, "error");
+          }
+        };
+        const toggleSelect = (id) =>
+          setSelected((s) =>
+            s.includes(id) ? s.filter((x) => x !== id) : [...s, id],
+          );
+        const toggleAll = () =>
+          setSelected((s) =>
+            s.length === docs.length ? [] : docs.map((d) => d._id),
+          );
+
+        const formatValue = (val) => {
+          if (val === null || val === undefined)
+            return <span className="text-slate-600 italic text-xs">—</span>;
+          if (typeof val === "boolean")
+            return (
+              <span className={val ? "text-emerald-400" : "text-red-400"}>
+                {val ? "Yes" : "No"}
+              </span>
+            );
+          if (Array.isArray(val))
+            return (
+              <span className="text-slate-400 italic text-xs">
+                {val.length} item{val.length === 1 ? "" : "s"}
+              </span>
+            );
+          if (typeof val === "object")
+            return (
+              <span className="text-slate-400 italic text-xs">
+                {Object.keys(val).length} field
+                {Object.keys(val).length === 1 ? "" : "s"}
+              </span>
+            );
+          const str = String(val);
+          if (str.startsWith("data:image"))
+            return (
+              <img
+                src={str}
+                className="h-8 w-12 object-cover rounded border border-slate-700"
+                alt=""
+              />
+            );
+          if (str.length > 40)
+            return (
+              <span title={str} className="text-slate-300">
+                {str.slice(0, 40)}…
+              </span>
+            );
+          return <span className="text-slate-300">{str}</span>;
+        };
+
+        return (
+          <div className="flex flex-col h-full">
+            {/* Toolbar */}
+            <div className="flex items-center gap-3 px-6 py-4 border-b border-slate-700/50 flex-wrap gap-y-3">
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  setSearch(searchInput);
+                  setPage(1);
+                }}
+                className="flex gap-2 flex-1 min-w-48"
+              >
+                <div className="relative flex-1">
+                  <Icon
+                    name="search"
+                    size={15}
+                    className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500"
+                  />
+                  <input
+                    value={searchInput}
+                    onChange={(e) => setSearchInput(e.target.value)}
+                    placeholder={`Search ${meta.label.toLowerCase()}...`}
+                    className="w-full bg-slate-800 border border-slate-600 rounded-lg pl-9 pr-3 py-2 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 transition"
+                  />
+                </div>
+                <button
+                  type="submit"
+                  className="bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-2 rounded-lg text-sm transition"
+                >
+                  Search
+                </button>
+                {search && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSearch("");
+                      setSearchInput("");
+                      setPage(1);
+                    }}
+                    className="text-slate-400 hover:text-white px-2"
+                  >
+                    <Icon name="x" size={16} />
+                  </button>
+                )}
+              </form>
+              <div className="flex items-center gap-2 ml-auto">
+                {selected.length > 0 && (
+                  <button
+                    onClick={() =>
+                      setConfirm({
+                        type: "bulk",
+                        msg: `Delete ${selected.length} selected item(s)?`,
+                      })
+                    }
+                    className="flex items-center gap-1.5 bg-red-700/80 hover:bg-red-600 text-white text-sm px-3 py-2 rounded-lg transition"
+                  >
+                    <Icon name="trash" size={14} /> Delete {selected.length}
+                  </button>
+                )}
+                <button
+                  onClick={load}
+                  title="Refresh"
+                  className="text-slate-400 hover:text-white p-2 rounded-lg hover:bg-slate-700 transition"
+                >
+                  <Icon name="refresh" size={16} />
+                </button>
+                <button
+                  onClick={() => setCreateMode(true)}
+                  className="flex items-center gap-1.5 bg-emerald-600 hover:bg-emerald-500 text-white text-sm px-3 py-2 rounded-lg transition font-medium"
+                >
+                  <Icon name="plus" size={15} /> Add{" "}
+                  {meta.label.replace(/s$/, "")}
+                </button>
+              </div>
+            </div>
+
+            {/* Stats */}
+            <div className="px-6 py-2 text-xs text-slate-500 border-b border-slate-800 flex items-center gap-4">
+              <span>
+                Total:{" "}
+                <span className="text-slate-300 font-medium">
+                  {total.toLocaleString()}
+                </span>
+              </span>
+              {search && (
+                <span>
+                  Filtered for "
+                  <span className="text-indigo-400">{search}</span>"
+                </span>
+              )}
+              {selected.length > 0 && (
+                <span className="text-indigo-400">
+                  {selected.length} selected
+                </span>
+              )}
+            </div>
+
+            {/* Table */}
+            <div className="flex-1 overflow-auto scrollbar-thin">
+              {loading ? (
+                <div className="flex items-center justify-center h-48 text-slate-500 gap-3">
+                  <Spinner size={22} /> Loading...
+                </div>
+              ) : docs.length === 0 ? (
+                <div className="flex flex-col items-center justify-center h-48 text-slate-600">
+                  <Icon name="table" size={40} className="mb-3 opacity-40" />
+                  <p className="font-medium">Nothing here yet</p>
+                  {search && (
+                    <p className="text-sm mt-1">Try a different search term</p>
+                  )}
+                </div>
+              ) : (
+                <table className="w-full text-sm border-collapse">
+                  <thead className="sticky top-0 z-10">
+                    <tr className="bg-slate-800/90 backdrop-blur">
+                      <th className="w-10 p-3 border-b border-slate-700">
+                        <input
+                          type="checkbox"
+                          checked={
+                            selected.length === docs.length && docs.length > 0
+                          }
+                          onChange={toggleAll}
+                          className="accent-indigo-500"
+                        />
+                      </th>
+                      {columns.map((col) => (
+                        <th
+                          key={col}
+                          className="text-left px-3 py-3 text-slate-400 font-medium border-b border-slate-700 whitespace-nowrap"
+                        >
+                          {prettifyKey(col)}
+                        </th>
+                      ))}
+                      <th className="text-right px-3 py-3 border-b border-slate-700 text-slate-400 font-medium">
+                        Actions
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {docs.map((doc, i) => (
+                      <tr
+                        key={doc._id || i}
+                        className={`border-b border-slate-800 hover:bg-slate-800/50 transition-colors ${selected.includes(doc._id) ? "bg-indigo-900/20" : ""}`}
+                      >
+                        <td className="p-3">
+                          <input
+                            type="checkbox"
+                            checked={selected.includes(doc._id)}
+                            onChange={() => toggleSelect(doc._id)}
+                            className="accent-indigo-500"
+                          />
+                        </td>
+                        {columns.map((col) => (
+                          <td key={col} className="px-3 py-2.5 max-w-xs">
+                            <span className="text-xs">
+                              {formatValue(doc[col])}
+                            </span>
+                          </td>
+                        ))}
+                        <td className="px-3 py-2 text-right">
+                          <div className="flex items-center justify-end gap-1">
+                            <button
+                              onClick={() => setViewDoc(doc)}
+                              title="View"
+                              className="text-slate-400 hover:text-indigo-400 p-1.5 rounded hover:bg-slate-700 transition"
+                            >
+                              <Icon name="eye" size={14} />
+                            </button>
+                            <button
+                              onClick={() => setEditDoc(doc)}
+                              title="Edit"
+                              className="text-slate-400 hover:text-amber-400 p-1.5 rounded hover:bg-slate-700 transition"
+                            >
+                              <Icon name="edit" size={14} />
+                            </button>
+                            <button
+                              onClick={() =>
+                                setConfirm({
+                                  type: "single",
+                                  id: doc._id,
+                                  msg: `Delete this ${meta.label.replace(/s$/, "").toLowerCase()}?`,
+                                })
+                              }
+                              title="Delete"
+                              className="text-slate-400 hover:text-red-400 p-1.5 rounded hover:bg-slate-700 transition"
+                            >
+                              <Icon name="trash" size={14} />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+            </div>
+
+            {/* Pagination */}
+            {totalPages > 1 && (
+              <div className="flex items-center justify-between px-6 py-3 border-t border-slate-700/50">
+                <span className="text-xs text-slate-500">
+                  Page {page} of {totalPages}
+                </span>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => setPage((p) => Math.max(1, p - 1))}
+                    disabled={page === 1}
+                    className="p-1.5 rounded text-slate-400 hover:text-white hover:bg-slate-700 disabled:opacity-30 transition"
+                  >
+                    <Icon name="chevronLeft" size={16} />
+                  </button>
+                  {Array.from({ length: Math.min(7, totalPages) }, (_, i) => {
+                    let pg;
+                    if (totalPages <= 7) pg = i + 1;
+                    else if (page <= 4) pg = i + 1;
+                    else if (page >= totalPages - 3) pg = totalPages - 6 + i;
+                    else pg = page - 3 + i;
+                    return (
+                      <button
+                        key={pg}
+                        onClick={() => setPage(pg)}
+                        className={`w-8 h-8 rounded text-xs transition ${pg === page ? "bg-indigo-600 text-white" : "text-slate-400 hover:bg-slate-700 hover:text-white"}`}
+                      >
+                        {pg}
+                      </button>
+                    );
+                  })}
+                  <button
+                    onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                    disabled={page === totalPages}
+                    className="p-1.5 rounded text-slate-400 hover:text-white hover:bg-slate-700 disabled:opacity-30 transition"
+                  >
+                    <Icon name="chevronRight" size={16} />
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {viewDoc && (
+              <ViewModal
+                doc={viewDoc}
+                collection={collectionName}
+                onClose={() => setViewDoc(null)}
+                onEdit={() => {
+                  setEditDoc(viewDoc);
+                  setViewDoc(null);
+                }}
+                toast={toast}
+              />
+            )}
+            {editDoc && (
+              <EditModal
+                doc={editDoc}
+                dbName={dbName}
+                collection={collectionName}
+                onClose={() => setEditDoc(null)}
+                onSaved={() => {
+                  setEditDoc(null);
+                  load();
+                }}
+                toast={toast}
+              />
+            )}
+            {createMode && (
+              <EditModal
+                doc={{}}
+                dbName={dbName}
+                collection={collectionName}
+                mode="create"
+                onClose={() => setCreateMode(false)}
+                onSaved={() => {
+                  setCreateMode(false);
+                  load();
+                }}
+                toast={toast}
+              />
+            )}
+            {confirm && (
+              <Confirm
+                message={confirm.msg}
+                onCancel={() => setConfirm(null)}
+                onConfirm={() => {
+                  setConfirm(null);
+                  confirm.type === "bulk"
+                    ? deleteBulk()
+                    : deleteOne(confirm.id);
+                }}
+              />
+            )}
+          </div>
+        );
+      }
+
+      // ── DASHBOARD ─────────────────────────────────────────────────────────────────
+      function StatCard({ label, value, icon, color = "indigo", onClick }) {
+        const colors = {
+          indigo: "bg-indigo-600/15 text-indigo-400 border-indigo-800/40",
+          emerald: "bg-emerald-600/15 text-emerald-400 border-emerald-800/40",
+          amber: "bg-amber-600/15 text-amber-400 border-amber-800/40",
+          rose: "bg-rose-600/15 text-rose-400 border-rose-800/40",
+          sky: "bg-sky-600/15 text-sky-400 border-sky-800/40",
+        };
+        return (
+          <div
+            onClick={onClick}
+            className={`bg-slate-900 border border-slate-700/60 rounded-xl p-5 ${onClick ? "cursor-pointer hover:border-slate-600 transition" : ""}`}
+          >
+            <div className="flex items-center gap-3 mb-3">
+              <div
+                className={`w-9 h-9 rounded-lg flex items-center justify-center border ${colors[color]}`}
+              >
+                <Icon name={icon} size={17} />
+              </div>
+              <p className="text-xs text-slate-400 font-medium uppercase tracking-wide">
+                {label}
+              </p>
+            </div>
+            <p className="text-2xl font-bold text-white">{value}</p>
+          </div>
+        );
+      }
+
+      function Dashboard({ dbName, collections, toast, onNavigate }) {
+        const [loading, setLoading] = useState(true);
+        const [stats, setStats] = useState(null);
+
+        const hasCol = (name) => collections.some((c) => c.name === name);
+
+        useEffect(() => {
+          let cancelled = false;
+          (async () => {
+            setLoading(true);
+            try {
+              const result = {
+                userCount: 0,
+                vendorCount: 0,
+                packageCount: 0,
+                bookingCount: 0,
+                revenue: 0,
+                pending: 0,
+                recent: [],
+                sampleCapped: false,
+              };
+
+              if (hasCol("travel_users")) {
+                const d = await api(
+                  "GET",
+                  `/data/${dbName}/travel_users?page=1&limit=1`,
+                );
+                result.userCount = d.total;
+              }
+              if (hasCol("vendors")) {
+                const d = await api(
+                  "GET",
+                  `/data/${dbName}/vendors?page=1&limit=1`,
+                );
+                result.vendorCount = d.total;
+              }
+              if (hasCol("packages")) {
+                const d = await api(
+                  "GET",
+                  `/data/${dbName}/packages?page=1&limit=1`,
+                );
+                result.packageCount = d.total;
+              }
+              if (hasCol("travel_bookings")) {
+                const d = await api(
+                  "GET",
+                  `/data/${dbName}/travel_bookings?page=1&limit=500`,
+                );
+                result.bookingCount = d.total;
+                const bdocs = d.documents || [];
+                result.revenue = bdocs.reduce(
+                  (sum, b) => sum + (Number(b.advanceAmount) || 0),
+                  0,
+                );
+                result.pending = bdocs.reduce(
+                  (sum, b) => sum + (Number(b.remainingAmount) || 0),
+                  0,
+                );
+                result.recent = [...bdocs]
+                  .sort(
+                    (a, b) =>
+                      new Date(b.createdAt || 0) - new Date(a.createdAt || 0),
+                  )
+                  .slice(0, 6);
+                result.sampleCapped = d.total > bdocs.length;
+              }
+              if (!cancelled) setStats(result);
+            } catch (e) {
+              if (!cancelled) toast(e.message, "error");
+            } finally {
+              if (!cancelled) setLoading(false);
+            }
+          })();
+          return () => {
+            cancelled = true;
+          };
+        }, [dbName, collections]);
+
+        if (loading) {
+          return (
+            <div className="flex items-center justify-center h-full text-slate-500 gap-3">
+              <Spinner size={22} /> Loading dashboard...
+            </div>
+          );
+        }
+        if (!stats) return null;
+
+        return (
+          <div className="h-full overflow-auto scrollbar-thin p-6 space-y-6">
+            <div>
+              <h1 className="text-xl font-bold text-white">Overview</h1>
+              <p className="text-sm text-slate-500 mt-1">
+                A quick snapshot of what's happening across your business.
+              </p>
+            </div>
+
+            <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-4">
+              <StatCard
+                label="Bookings"
+                value={stats.bookingCount.toLocaleString()}
+                icon="table"
+                color="indigo"
+                onClick={() => onNavigate("travel_bookings")}
+              />
+              <StatCard
+                label="Revenue Collected"
+                value={fmtCurrency(stats.revenue)}
+                icon="chart"
+                color="emerald"
+                onClick={() => onNavigate("travel_bookings")}
+              />
+              <StatCard
+                label="Pending Balance"
+                value={fmtCurrency(stats.pending)}
+                icon="info"
+                color="amber"
+                onClick={() => onNavigate("travel_bookings")}
+              />
+              <StatCard
+                label="Customers"
+                value={stats.userCount.toLocaleString()}
+                icon="database"
+                color="sky"
+                onClick={() => onNavigate("travel_users")}
+              />
+              <StatCard
+                label="Vendors"
+                value={stats.vendorCount.toLocaleString()}
+                icon="shield"
+                color="rose"
+                onClick={() => onNavigate("vendors")}
+              />
+            </div>
+
+            {stats.sampleCapped && (
+              <p className="text-xs text-slate-600 -mt-2">
+                Revenue and pending balance are calculated from the 500 most
+                recently loaded bookings.
+              </p>
+            )}
+
+            <div className="grid md:grid-cols-3 gap-4">
+              {collections.map((c) => {
+                const cmeta = collectionMeta(c.name);
+                return (
+                  <button
+                    key={c.name}
+                    onClick={() => onNavigate(c.name)}
+                    className="text-left bg-slate-900 border border-slate-700/60 hover:border-indigo-600/60 rounded-xl p-4 transition flex items-center gap-3"
+                  >
+                    <span className="text-2xl">{cmeta.icon}</span>
+                    <div>
+                      <p className="text-sm font-semibold text-white">
+                        {cmeta.label}
+                      </p>
+                      <p className="text-xs text-slate-500">
+                        {c.count.toLocaleString()} records
+                      </p>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+
+            {hasCol("travel_bookings") && (
+              <div className="bg-slate-900 border border-slate-700/60 rounded-xl overflow-hidden">
+                <div className="px-5 py-3.5 border-b border-slate-700/50 flex items-center justify-between">
+                  <p className="text-sm font-semibold text-white">
+                    Recent Bookings
+                  </p>
+                  <button
+                    onClick={() => onNavigate("travel_bookings")}
+                    className="text-xs text-indigo-400 hover:text-indigo-300"
+                  >
+                    View all →
+                  </button>
+                </div>
+                {stats.recent.length === 0 ? (
+                  <p className="text-sm text-slate-600 px-5 py-6 text-center">
+                    No bookings yet
+                  </p>
+                ) : (
+                  <div className="divide-y divide-slate-800">
+                    {stats.recent.map((b) => (
+                      <div
+                        key={b._id}
+                        className="px-5 py-3 flex items-center justify-between gap-3 hover:bg-slate-800/40 transition"
+                      >
+                        <div className="min-w-0">
+                          <p className="text-sm text-white font-medium truncate">
+                            {b.fullName || "—"}{" "}
+                            <span className="text-slate-500 font-normal">
+                              · {b.tourName || "Custom Trip"}
+                            </span>
+                          </p>
+                          <p className="text-xs text-slate-500">
+                            {b.createdAt
+                              ? new Date(b.createdAt).toLocaleDateString()
+                              : "—"}
+                          </p>
+                        </div>
+                        <div className="text-right flex-shrink-0">
+                          <p className="text-sm font-semibold text-white">
+                            {fmtCurrency(b.totalAmount)}
+                          </p>
+                          <span
+                            className={`text-xs px-2 py-0.5 rounded-full ${
+                              b.paymentStatus === "completed"
+                                ? "bg-emerald-900/40 text-emerald-400"
+                                : b.paymentStatus === "failed"
+                                  ? "bg-red-900/40 text-red-400"
+                                  : "bg-amber-900/40 text-amber-400"
+                            }`}
+                          >
+                            {b.paymentStatus}
+                          </span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        );
+      }
+
+      // ── LOGIN ─────────────────────────────────────────────────────────────────────
+      function LoginPage({ onLogin }) {
+        const [form, setForm] = useState({ username: "", password: "" });
+        const [loading, setLoading] = useState(false);
+        const [error, setError] = useState("");
+        const [showPw, setShowPw] = useState(false);
+
+        const handleSubmit = async (e) => {
+          e.preventDefault();
+          setLoading(true);
+          setError("");
+          try {
+            const data = await api("POST", "/auth/login", form);
+            setToken(data.token);
+            onLogin(data.username);
+          } catch (e) {
+            setError(e.message);
+          } finally {
+            setLoading(false);
+          }
+        };
+
+        return (
+          <div className="min-h-screen bg-slate-950 flex items-center justify-center p-4">
+            <div className="absolute inset-0 overflow-hidden pointer-events-none">
+              <div className="absolute top-1/4 left-1/2 -translate-x-1/2 w-96 h-96 bg-indigo-600/10 rounded-full blur-3xl" />
+              <div className="absolute bottom-1/4 left-1/3 w-64 h-64 bg-violet-600/10 rounded-full blur-3xl" />
+            </div>
+            <div className="relative w-full max-w-md fade-in">
+              <div className="bg-slate-900 border border-slate-700/50 rounded-2xl shadow-2xl overflow-hidden">
+                <div className="bg-gradient-to-br from-indigo-600 to-violet-700 p-8 text-center">
+                  <div className="w-16 h-16 bg-white/10 rounded-2xl flex items-center justify-center mx-auto mb-4 border border-white/20">
+                    <Icon name="shield" size={32} className="text-white" />
+                  </div>
+                  <h1 className="text-2xl font-bold text-white">TourTravels</h1>
+                  <p className="text-indigo-200 text-sm mt-1">
+                    Admin Control Panel
+                  </p>
+                </div>
+                <form onSubmit={handleSubmit} className="p-8 space-y-5">
+                  {error && (
+                    <div className="bg-red-900/40 border border-red-700/50 text-red-300 rounded-lg px-4 py-3 text-sm flex items-center gap-2">
+                      <Icon name="info" size={15} /> {error}
+                    </div>
+                  )}
+                  <div>
+                    <label className="block text-sm font-medium text-slate-400 mb-2">
+                      Username
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={form.username}
+                      onChange={(e) =>
+                        setForm((f) => ({ ...f, username: e.target.value }))
+                      }
+                      className="w-full bg-slate-800 border border-slate-600 rounded-lg px-4 py-2.5 text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition"
+                      placeholder="Enter username"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-slate-400 mb-2">
+                      Password
+                    </label>
+                    <div className="relative">
+                      <input
+                        type={showPw ? "text" : "password"}
+                        required
+                        value={form.password}
+                        onChange={(e) =>
+                          setForm((f) => ({ ...f, password: e.target.value }))
+                        }
+                        className="w-full bg-slate-800 border border-slate-600 rounded-lg px-4 py-2.5 pr-11 text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition"
+                        placeholder="Enter password"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPw((s) => !s)}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-200"
+                      >
+                        <Icon name="eye" size={17} />
+                      </button>
+                    </div>
+                  </div>
+                  <button
+                    type="submit"
+                    disabled={loading}
+                    className="w-full bg-indigo-600 hover:bg-indigo-500 disabled:bg-indigo-800 text-white font-semibold py-2.5 rounded-lg transition flex items-center justify-center gap-2"
+                  >
+                    {loading ? (
+                      <>
+                        <Spinner size={18} /> Signing in...
+                      </>
+                    ) : (
+                      "Sign In"
+                    )}
+                  </button>
+                </form>
+              </div>
+              <p className="text-center text-slate-600 text-xs mt-4">
+                Restricted access — authorised personnel only
+              </p>
+            </div>
+          </div>
+        );
+      }
+
+      // ── ADMIN PANEL SHELL ─────────────────────────────────────────────────────────
+      function AdminPanel({ username, onLogout }) {
+        const [databases, setDatabases] = useState([]);
+        const [selectedDb, setSelectedDb] = useState(null);
+        const [collections, setCollections] = useState([]);
+        const [selectedCol, setSelectedCol] = useState(null);
+        const [showDashboard, setShowDashboard] = useState(true);
+        const [loadingDbs, setLoadingDbs] = useState(true);
+        const [loadingCols, setLoadingCols] = useState(false);
+        const [sidebarOpen, setSidebarOpen] = useState(true);
+        const { toasts, toast, removeToast } = useToast();
+
+        useEffect(() => {
+          (async () => {
+            try {
+              const d = await api("GET", "/databases");
+              setDatabases(d.databases);
+              if (d.databases.length > 0) setSelectedDb(d.databases[0].name);
+            } catch (e) {
+              toast(e.message, "error");
+            } finally {
+              setLoadingDbs(false);
+            }
+          })();
+        }, []);
+
+        useEffect(() => {
+          if (!selectedDb) return;
+          setLoadingCols(true);
+          setSelectedCol(null);
+          setShowDashboard(true);
+          (async () => {
+            try {
+              const d = await api("GET", `/collections/${selectedDb}`);
+              setCollections(d.collections);
+              if (d.collections.length > 0)
+                setSelectedCol(d.collections[0].name);
+            } catch (e) {
+              toast(e.message, "error");
+            } finally {
+              setLoadingCols(false);
+            }
+          })();
+        }, [selectedDb]);
+
+        const fmtBytes = (b) => {
+          if (!b) return "0 B";
+          const k = 1024,
+            s = ["B", "KB", "MB", "GB"],
+            i = Math.floor(Math.log(b) / Math.log(k));
+          return `${(b / Math.pow(k, i)).toFixed(1)} ${s[i]}`;
+        };
+
+        return (
+          <div className="flex h-screen bg-slate-950 text-white overflow-hidden">
+            <Toast toasts={toasts} removeToast={removeToast} />
+
+            {/* Sidebar */}
+            <div
+              className={`${sidebarOpen ? "w-64" : "w-0"} transition-all duration-300 overflow-hidden flex-shrink-0 border-r border-slate-700/50 flex flex-col bg-slate-900`}
+            >
+              <div className="px-5 py-4 border-b border-slate-700/50">
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 bg-indigo-600 rounded-lg flex items-center justify-center flex-shrink-0">
+                    <Icon name="shield" size={16} className="text-white" />
+                  </div>
+                  <div>
+                    <div className="font-bold text-sm text-white">
+                      TourTravels
+                    </div>
+                    <div className="text-xs text-slate-500">Admin Panel</div>
+                  </div>
+                </div>
+              </div>
+              <div className="px-4 pt-4 pb-2">
+                <div className="flex items-center gap-2 text-xs text-slate-500 font-medium uppercase tracking-wider mb-2">
+                  <Icon name="database" size={12} /> Databases
+                </div>
+                {loadingDbs ? (
+                  <div className="flex items-center gap-2 text-slate-500 text-sm py-2">
+                    <Spinner size={14} /> Loading...
+                  </div>
+                ) : (
+                  databases.map((db) => (
+                    <button
+                      key={db.name}
+                      onClick={() => setSelectedDb(db.name)}
+                      className={`w-full text-left px-3 py-2 rounded-lg text-sm transition mb-1 flex items-center gap-2 ${selectedDb === db.name ? "bg-indigo-600 text-white" : "text-slate-400 hover:bg-slate-800 hover:text-white"}`}
+                    >
+                      <Icon name="database" size={13} />
+                      <span className="truncate">{db.name}</span>
+                      {db.sizeOnDisk > 0 && (
+                        <span className="ml-auto text-xs opacity-60">
+                          {fmtBytes(db.sizeOnDisk)}
+                        </span>
+                      )}
+                    </button>
+                  ))
+                )}
+              </div>
+              {selectedDb && (
+                <div className="px-4 pb-4 flex-1 overflow-auto scrollbar-thin">
+                  <button
+                    onClick={() => setShowDashboard(true)}
+                    className={`w-full text-left px-3 py-2 rounded-lg text-sm transition mb-3 flex items-center gap-2 ${showDashboard ? "bg-indigo-600 text-white" : "text-slate-400 hover:bg-slate-800 hover:text-white"}`}
+                  >
+                    <Icon name="chart" size={13} />
+                    <span className="truncate font-medium">Dashboard</span>
+                  </button>
+                  <div className="flex items-center gap-2 text-xs text-slate-500 font-medium uppercase tracking-wider mb-2 mt-2">
+                    Sections {loadingCols && <Spinner size={12} />}
+                  </div>
+                  {collections.map((col) => {
+                    const cmeta = collectionMeta(col.name);
+                    const active = !showDashboard && selectedCol === col.name;
+                    return (
+                      <button
+                        key={col.name}
+                        onClick={() => {
+                          setSelectedCol(col.name);
+                          setShowDashboard(false);
+                        }}
+                        className={`w-full text-left px-3 py-2 rounded-lg text-sm transition mb-1 flex items-center gap-2 ${active ? "bg-slate-700 text-white" : "text-slate-400 hover:bg-slate-800 hover:text-white"}`}
+                      >
+                        <span className="text-base leading-none">
+                          {cmeta.icon}
+                        </span>
+                        <span className="truncate">{cmeta.label}</span>
+                        <span
+                          className={`ml-auto text-xs px-1.5 py-0.5 rounded-full ${active ? "bg-slate-600 text-slate-300" : "bg-slate-800 text-slate-500"}`}
+                        >
+                          {col.count.toLocaleString()}
+                        </span>
+                      </button>
+                    );
+                  })}
+                  {!loadingCols && collections.length === 0 && (
+                    <p className="text-slate-600 text-xs px-3">
+                      No sections found
+                    </p>
+                  )}
+                </div>
+              )}
+              <div className="px-4 py-4 border-t border-slate-700/50 mt-auto">
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 bg-slate-700 rounded-full flex items-center justify-center text-sm font-bold text-indigo-400">
+                    {username[0].toUpperCase()}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="text-sm font-medium text-white truncate">
+                      {username}
+                    </div>
+                    <div className="text-xs text-slate-500">Administrator</div>
+                  </div>
+                  <button
+                    onClick={() => {
+                      clearToken();
+                      onLogout();
+                    }}
+                    title="Logout"
+                    className="text-slate-500 hover:text-red-400 transition"
+                  >
+                    <Icon name="logout" size={16} />
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* Main area */}
+            <div className="flex-1 flex flex-col overflow-hidden">
+              <div className="flex items-center gap-4 px-6 py-3.5 border-b border-slate-700/50 bg-slate-900/80 backdrop-blur">
+                <button
+                  onClick={() => setSidebarOpen((s) => !s)}
+                  className="text-slate-400 hover:text-white transition p-1 rounded hover:bg-slate-700"
+                >
+                  <svg
+                    width="18"
+                    height="18"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                  >
+                    <line x1="3" y1="6" x2="21" y2="6" />
+                    <line x1="3" y1="12" x2="21" y2="12" />
+                    <line x1="3" y1="18" x2="21" y2="18" />
+                  </svg>
+                </button>
+                <div className="flex items-center gap-2 text-sm">
+                  <span className="text-slate-500">{selectedDb}</span>
+                  <span className="text-slate-600">/</span>
+                  <span className="text-white font-medium">
+                    {showDashboard
+                      ? "Dashboard"
+                      : selectedCol
+                        ? collectionMeta(selectedCol).label
+                        : ""}
+                  </span>
+                </div>
+                <div className="ml-auto">
+                  <span className="inline-flex items-center gap-1.5 text-xs text-emerald-400 bg-emerald-900/30 px-2.5 py-1 rounded-full border border-emerald-800/50">
+                    <span className="w-1.5 h-1.5 bg-emerald-400 rounded-full animate-pulse inline-block" />{" "}
+                    Connected
+                  </span>
+                </div>
+              </div>
+              <div className="flex-1 overflow-hidden">
+                {!selectedDb ? (
+                  <div className="flex flex-col items-center justify-center h-full text-slate-600">
+                    <Icon
+                      name="database"
+                      size={52}
+                      className="mb-4 opacity-30"
+                    />
+                    <p className="text-lg font-medium text-slate-500">
+                      Select a database
+                    </p>
+                    <p className="text-sm mt-1">
+                      Choose a database from the sidebar to get started
+                    </p>
+                  </div>
+                ) : showDashboard ? (
+                  <Dashboard
+                    dbName={selectedDb}
+                    collections={collections}
+                    toast={toast}
+                    onNavigate={(name) => {
+                      setSelectedCol(name);
+                      setShowDashboard(false);
+                    }}
+                  />
+                ) : selectedCol ? (
+                  <CollectionTable
+                    key={`${selectedDb}/${selectedCol}`}
+                    dbName={selectedDb}
+                    collectionName={selectedCol}
+                    toast={toast}
+                  />
+                ) : (
+                  <div className="flex flex-col items-center justify-center h-full text-slate-600">
+                    <Icon name="table" size={52} className="mb-4 opacity-30" />
+                    <p className="text-lg font-medium text-slate-500">
+                      Select a section
+                    </p>
+                    <p className="text-sm mt-1">
+                      Choose Users, Vendors, Bookings or Packages from the
+                      sidebar
+                    </p>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        );
+      }
+
+      // ── APP ROOT ──────────────────────────────────────────────────────────────────
+      function App() {
+        const [user, setUser] = useState(null);
+        const [checking, setChecking] = useState(true);
+        useEffect(() => {
+          const token = getToken();
+          if (!token) {
+            setChecking(false);
+            return;
+          }
+          api("GET", "/auth/verify")
+            .then((d) => setUser(d.user.username))
+            .catch(() => clearToken())
+            .finally(() => setChecking(false));
+        }, []);
+        if (checking)
+          return (
+            <div className="min-h-screen bg-slate-950 flex items-center justify-center text-indigo-400">
+              <Spinner size={36} />
+            </div>
+          );
+        if (!user) return <LoginPage onLogin={setUser} />;
+        return <AdminPanel username={user} onLogout={() => setUser(null)} />;
+      }
+
+      ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+    </script>
+  </body>
+</html>

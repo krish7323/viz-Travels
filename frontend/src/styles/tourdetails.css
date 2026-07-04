@@ -1,0 +1,216 @@
+.tourdetails-app{
+     padding: 20px 40px;
+  /* background: #f6f8fb; */
+  min-height: 100vh;
+  
+  font-family: Poppins, sans-serif;
+  background: #0f172a;
+  color: white;
+    margin-top: -40px;
+}
+
+/* HERO */
+.detail-hero {
+  position: relative;
+  height: 400px;
+}
+
+.detail-hero img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.detail-hero .overlay {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  padding: 30px;
+  background: linear-gradient(to top, rgba(0,0,0,0.7), transparent);
+}
+
+.detail-hero h1 {
+  color: white;
+  font-size: 32px;
+}
+
+/* MAIN LAYOUT */
+.detail-container {
+  display: flex;
+  gap: 40px;
+  padding: 40px 10%;
+}
+
+/* LEFT */
+.detail-left {
+  flex: 2;
+}
+
+.detail-left h2 {
+  margin-bottom: 10px;
+}
+
+.detail-left p {
+  color: #555;
+  line-height: 1.6;
+}
+
+.highlights {
+  margin-top: 20px;
+}
+
+.highlights ul {
+  padding-left: 15px;
+}
+
+.highlights li {
+  margin-bottom: 8px;
+}
+
+/* RIGHT */
+.detail-right {
+  flex: 1;
+}
+
+.price-card {
+  background: white;
+  padding: 25px;
+  border-radius: 12px;
+  box-shadow: 0 5px 20px rgba(0,0,0,0.1);
+  text-align: center;
+  position: sticky;
+  top: 100px;
+}
+
+.price-card h2 {
+  font-size: 26px;
+  margin-bottom: 10px;
+}
+
+.price-card p {
+  color: #777;
+}
+
+/* BUTTONS */
+.book-btn {
+  width: 100%;
+  margin-top: 15px;
+  padding: 12px;
+  background: black;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.book-btn:hover {
+  background: #333;
+}
+
+.wishlist-btn {
+  width: 100%;
+  margin-top: 10px;
+  padding: 10px;
+  background: #f1f1f1;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+/* RESPONSIVE */
+@media (max-width: 900px) {
+  .detail-container {
+    flex-direction: column;
+  }
+
+  .price-card {
+    position: static;
+  }
+}
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 999;
+}
+
+.login-modal {
+  background: linear-gradient(145deg, #0f172a, #1e293b);
+  padding: 30px;
+  border-radius: 16px;
+  width: 400px;
+  position: relative;
+  color: #fff;
+  box-shadow: 0 0 30px rgba(0, 0, 0, 0.5);
+}
+
+.modal-content {
+  text-align: center;
+}
+
+.modal-content h2 {
+  margin-bottom: 10px;
+}
+
+.subtitle {
+  font-size: 14px;
+  color: #aaa;
+  margin-bottom: 20px;
+}
+
+.input-field {
+  width: 100%;
+  padding: 12px;
+  border-radius: 8px;
+  border: none;
+  margin-bottom: 15px;
+  background: #1e293b;
+  color: #fff;
+}
+
+.primary-btn {
+  width: 100%;
+  padding: 12px;
+  border-radius: 8px;
+  border: none;
+  background: linear-gradient(to right, #3b82f6, #2563eb);
+  color: white;
+  font-weight: bold;
+  cursor: pointer;
+  margin-bottom: 10px;
+}
+
+.secondary-btn {
+  width: 100%;
+  padding: 10px;
+  border-radius: 8px;
+  border: 1px solid #3b82f6;
+  background: transparent;
+  color: #3b82f6;
+  cursor: pointer;
+}
+
+.divider {
+  margin: 10px 0;
+  color: #888;
+}
+
+.error-msg {
+  color: #ff6b6b;
+  margin-top: 10px;
+}
+
+.close-btn {
+  position: absolute;
+  top: 10px;
+  right: 15px;
+  cursor: pointer;
+  font-size: 18px;
+}

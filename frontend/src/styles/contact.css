@@ -1,0 +1,128 @@
+.fl-contact-app {
+  font-family: Poppins, sans-serif;
+  background: #0f172a;
+  color: white;
+    margin-top: -40px;
+
+}
+
+body {
+  margin: 0;
+  font-family: "Poppins", sans-serif;
+}
+
+/* Background */
+.contact-page {
+  min-height: 100vh;
+  padding: 80px 20px;
+  background: linear-gradient(135deg, #0f172a, #1e293b);
+  color: white;
+  text-align: center;
+}
+
+.contact-page h1 {
+  font-size: 34px;
+  margin-bottom: 10px;
+}
+
+.contact-page p {
+  color: #cbd5e1;
+  margin-bottom: 40px;
+}
+
+/* CARD */
+.contact-card {
+  max-width: 1100px;
+  margin: auto;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  border-radius: 20px;
+  overflow: hidden;
+  background: rgba(255,255,255,0.05);
+  backdrop-filter: blur(15px);
+}
+
+/* LEFT FORM */
+.form-section {
+  padding: 40px;
+  background: rgba(255,255,255,0.08);
+}
+
+.row {
+  display: flex;
+  gap: 15px;
+  margin-bottom: 15px;
+}
+
+input, textarea {
+  width: 100%;
+  padding: 12px;
+  border-radius: 10px;
+  border: none;
+  outline: none;
+  background: rgba(255,255,255,0.1);
+  color: white;
+}
+
+input::placeholder, textarea::placeholder {
+  color: #cbd5e1;
+}
+
+textarea {
+  margin-bottom: 15px;
+}
+
+button {
+  /* width: 100%; */
+  padding: 14px;
+  border: none;
+  border-radius: 10px;
+  background: linear-gradient(135deg, #38bdf8, #0ea5e9);
+  color: #0f172a;
+  font-weight: 600;
+  cursor: pointer;
+  transition: 0.3s;
+}
+
+button:hover {
+  transform: scale(1.05);
+}
+
+/* RIGHT SIDE */
+.info-section {
+  background: url("https://images.unsplash.com/photo-1501785888041-af3ef285b470") center/cover;
+  position: relative;
+}
+
+.overlay {
+  height: 100%;
+  background: rgba(15, 23, 42, 0.7);
+  padding: 40px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.overlay h2 {
+  font-size: 28px;
+  margin-bottom: 10px;
+}
+
+.overlay p {
+  margin-bottom: 20px;
+}
+
+.info p {
+  margin: 8px 0;
+}
+
+/* RESPONSIVE */
+@media (max-width: 768px) {
+  .contact-card {
+    grid-template-columns: 1fr;
+  }
+
+  .row {
+    flex-direction: column;
+  }
+}

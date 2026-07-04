@@ -1,0 +1,117 @@
+/* FULL SCREEN OVERLAY */
+.viz-booking-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(2, 6, 23, 0.65);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  backdrop-filter: blur(8px);
+  z-index: 999;
+}
+
+/* MAIN CARD */
+.viz-booking-card {
+  width: 440px;
+  background: #ffffff;
+  padding: 26px;
+  border-radius: 20px;
+  box-shadow: 0 25px 60px rgba(0,0,0,0.25);
+  animation: vizPop 0.25s ease-in-out;
+}
+
+/* ANIMATION */
+@keyframes vizPop {
+  from { transform: scale(0.92); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
+
+/* HEADER */
+.viz-booking-header h2 {
+  margin: 0;
+  font-size: 22px;
+  color: #0f172a;
+}
+
+.viz-booking-header p {
+  font-size: 13px;
+  color: #64748b;
+  margin-bottom: 15px;
+}
+
+/* ROW LAYOUT */
+.viz-booking-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+/* INPUTS */
+.viz-booking-card input,
+.viz-booking-card select,
+.viz-booking-note {
+  width: 100%;
+  padding: 11px 12px;
+  margin: 6px 0;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  font-size: 13px;
+  outline: none;
+  transition: 0.2s;
+  background: #ccd0d4;
+}
+
+.viz-booking-card input:focus,
+.viz-booking-card select:focus,
+.viz-booking-note:focus {
+  border-color: #1e293b;
+  box-shadow: 0 0 0 3px rgba(30, 41, 59, 0.1);
+  background: #575353;
+}
+
+/* TEXTAREA */
+.viz-booking-note {
+  grid-column: span 2;
+  height: 85px;
+  resize: none;
+}
+
+/* BUTTONS */
+.viz-booking-actions {
+  display: flex;
+  gap: 12px;
+  margin-top: 12px;
+}
+
+.viz-btn-primary {
+  flex: 1;
+  padding: 12px;
+  background: linear-gradient(135deg, #0f172a, #1e293b);
+  color: rgb(147, 137, 137);
+  border: none;
+  border-radius: 12px;
+  cursor: pointer;
+  font-weight: 500;
+  transition: 0.2s;
+}
+
+.viz-btn-primary:hover {
+  transform: translateY(-1px);
+}
+
+.viz-btn-secondary {
+  flex: 1;
+  padding: 12px;
+  background: #f1f5f9;
+  border: none;
+  border-radius: 12px;
+  cursor: pointer;
+}
+
+/* FOOTER */
+.viz-booking-footer {
+  margin-top: 12px;
+  font-size: 11px;
+  text-align: center;
+  color: #94a3b8;
+}
